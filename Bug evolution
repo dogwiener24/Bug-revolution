@@ -1,0 +1,430 @@
+--[[
+    Bug Revolution - Full Master Suite (Complete 5-File Permanent Edition)
+    Features: 
+    - Permanent editable workspace mirrors for Config, SpiderDefs, TraitDefs, Stages, and Signal
+    - getgenv() global state persistence & anti-cheat hooks (getgc, getupvalues, getconstants)
+    - Clean Velocity Speed Bypass & 10x Attack Loop
+    - Interactive Rayfield UI with live stat editors & auto-save
+]]
+
+-- =================================================================
+-- 1. LOCAL WORKSPACE FILE MANAGERS (Permanent Decompiled Data)
+-- =================================================================
+local ConfigFileName    = "BugEvolution_Config.lua"
+local SpiderFileName    = "BugEvolution_SpiderDefs.lua"
+local TraitFileName     = "BugEvolution_TraitDefs.lua"
+local StagesFileName    = "BugEvolution_Stages.lua"
+local SignalFileName    = "BugEvolution_Signal.lua"
+
+-- Full Shared.Config Mirror[span_6](start_span)[span_6](end_span)
+local defaultConfigFile = [[
+    return {
+        GAME_NAME = "Bug Evolution",
+        MAX_LEVEL = 200,
+        XP_GAIN_MULT = 1.5,
+        BaseReach = 4.4,
+        AttackMultiplier = 10,
+        CustomSpeed = 32,
+        SpeedBypass = false,
+        AutoToolActive = false,
+        SafeAttackActive = false,
+        ReachMultiplier = 1.0,
+        Growth = { Health = 0.06, Damage = 0.04, Speed = 0, Stamina = 0.01 },
+        Combat = { BaseReach = 4.4, ReachPad = 2.6, SpawnProtection = 15, HatchProtection = 10 }
+    }
+]]
+
+-- Full SpiderDefs Mirror[span_7](start_span)[span_7](end_span)
+local defaultSpiderFile = [[
+    return {
+        { Id = "GardenSpider", Name = "Garden Spider", Family = "Spider", Tier = 1, Cost = 0, ReqLevel = 0, Stats = { Speed = 16, Health = 100, Damage = 10, AttackSpeed = 1, Stamina = 100 } },
+        { Id = "Housefly", Name = "Housefly", Family = "Fly", Tier = 2, Cost = 200, ReqLevel = 14, Stats = { Speed = 20, Health = 105, Damage = 11, AttackSpeed = 1.2, Stamina = 130 } },
+        { Id = "Grasshopper", Name = "Grasshopper", Family = "Grasshopper", Tier = 2, Cost = 200, ReqLevel = 14, Stats = { Speed = 22, Health = 120, Damage = 10, AttackSpeed = 1.05, Stamina = 150 } },
+        { Id = "Monarch", Name = "Monarch", Family = "Butterfly", Tier = 3, Cost = 450, ReqLevel = 18, Stats = { Speed = 18, Health = 165, Damage = 15, AttackSpeed = 1.05, Stamina = 150 } },
+        { Id = "JumpingSpider", Name = "Jumping Spider", Family = "Spider", Tier = 3, Cost = 450, ReqLevel = 18, Stats = { Speed = 20, Health = 160, Damage = 16, AttackSpeed = 1.15, Stamina = 140 } },
+        { Id = "Locust", Name = "Locust", Family = "Grasshopper", Tier = 3, Cost = 450, ReqLevel = 18, Stats = { Speed = 21, Health = 150, Damage = 15, AttackSpeed = 1.15, Stamina = 160 } },
+        { Id = "BlackWidow", Name = "Black Widow", Family = "Spider", Tier = 3, Cost = 450, ReqLevel = 18, Stats = { Speed = 19, Health = 185, Damage = 18, AttackSpeed = 1.05, Stamina = 130 } },
+        { Id = "Mosquito", Name = "Mosquito", Family = "Fly", Tier = 4, Cost = 1800, ReqLevel = 28, Stats = { Speed = 23, Health = 200, Damage = 19, AttackSpeed = 1.3, Stamina = 165 } },
+        { Id = "WolfSpider", Name = "Wolf Spider", Family = "Spider", Tier = 4, Cost = 1800, ReqLevel = 28, Stats = { Speed = 22, Health = 230, Damage = 20, AttackSpeed = 1.1, Stamina = 165 } },
+        { Id = "Tarantula", Name = "Tarantula", Family = "Spider", Tier = 5, Cost = 12000, ReqLevel = 55, Stats = { Speed = 22, Health = 380, Damage = 27, AttackSpeed = 1, Stamina = 180 } },
+        { Id = "Goliath", Name = "Goliath Birdeater", Family = "Spider", Tier = 5, Cost = 12000, ReqLevel = 55, Stats = { Speed = 18, Health = 460, Damage = 29, AttackSpeed = 0.95, Stamina = 150 } },
+        { Id = "BroodMother", Name = "Brood Mother", Family = "Spider", Tier = 6, Cost = 35000, ReqLevel = 80, Stats = { Speed = 21, Health = 560, Damage = 35, AttackSpeed = 1.05, Stamina = 200 } }
+    }
+]]
+
+-- Full TraitDefs Mirror[span_8](start_span)[span_8](end_span)
+local defaultTraitFile = [[
+    return {
+        { Id = "Sprinter", Category = "Movement", Name = "Sprinter", Bonus = { Speed = 0.15, AttackSpeed = -0.06 } },
+        { Id = "LongLegs", Category = "Movement", Name = "Long Legs", Bonus = { Speed = 0.08 } },
+        { Id = "Marathon", Category = "Movement", Name = "Marathon", Bonus = { Stamina = 0.25 } },
+        { Id = "Springy", Category = "Movement", Name = "Springy", Bonus = { JumpCost = -0.4 } },
+        { Id = "Carapace", Category = "Defensive", Name = "Thick Carapace", Bonus = { Health = 0.12 } },
+        { Id = "Leech", Category = "Defensive", Name = "Leech Fangs", Bonus = { Lifesteal = 0.06 } },
+        { Id = "Serrated", Category = "Offensive", Name = "Serrated Edge", Bonus = { Damage = 0.08 } },
+        { Id = "QuickFangs", Category = "Offensive", Name = "Quick Fangs", Bonus = { AttackSpeed = 0.1 } },
+        { Id = "LongReach", Category = "Offensive", Name = "Long Reach", Bonus = { Reach = 0.15 } },
+        { Id = "Glass", Category = "Offensive", Name = "Glass Fangs", Bonus = { Damage = 0.15, Health = -0.08 } },
+        { Id = "Crit", Category = "Offensive", Name = "Lucky Bite", Bonus = { Crit = 0.12 } }
+    }
+]]
+
+-- Full Stages Mirror[span_9](start_span)[span_9](end_span)
+local defaultStagesFile = [[
+    return {
+        PaidAdult = 18,
+        AdultByTier = { 12, 15, 28, 40, 55, 80, 105 }
+    }
+]]
+
+-- Full Signal Class Mirror[span_10](start_span)[span_10](end_span)
+local defaultSignalFile = [[
+    local Signal = {}
+    Signal.__index = Signal
+
+    function Signal.new()
+        return setmetatable({ ["_handlers"] = {} }, Signal)
+    end
+
+    function Signal:Connect(handler)
+        table.insert(self._handlers, handler)
+        local handlersRef = self._handlers
+        return {
+            ["Disconnect"] = function()
+                local idx = table.find(handlersRef, handler)
+                if idx then table.remove(handlersRef, idx) end
+            end
+        }
+    end
+
+    function Signal:Fire(...)
+        for _, handler in ipairs(table.clone(self._handlers)) do
+            task.spawn(handler, ...)
+        end
+    end
+
+    return Signal
+]]
+
+-- Create files if missing on storage
+if writefile and readfile and isfile then
+    if not isfile(ConfigFileName)  then writefile(ConfigFileName, defaultConfigFile) end
+    if not isfile(SpiderFileName)  then writefile(SpiderFileName, defaultSpiderFile) end
+    if not isfile(TraitFileName)   then writefile(TraitFileName, defaultTraitFile) end
+    if not isfile(StagesFileName)  then writefile(StagesFileName, defaultStagesFile) end
+    if not isfile(SignalFileName)  then writefile(SignalFileName, defaultSignalFile) end
+end
+
+local function loadWorkspaceFile(fileName, defaultTable)
+    local success, result = pcall(function()
+        if readfile and isfile and isfile(fileName) then
+            local content = readfile(fileName)
+            local func = loadstring(content)
+            if func then return func() end
+        end
+        return nil
+    end)
+    return success and result or defaultTable
+end
+
+local GameConfig   = loadWorkspaceFile(ConfigFileName, { BaseReach = 4.4, MaxLevel = 200, AttackMultiplier = 10, CustomSpeed = 32, SpeedBypass = false, AutoToolActive = false, SafeAttackActive = false, ReachMultiplier = 1.0 })
+local SpiderConfig = loadWorkspaceFile(SpiderFileName, {})
+local TraitConfig  = loadWorkspaceFile(TraitFileName, {})
+local StagesConfig = loadWorkspaceFile(StagesFileName, { PaidAdult = 18, AdultByTier = {12,15,28,40,55,80,105} })
+local SignalModule = loadWorkspaceFile(SignalFileName, {})
+
+-- Secure Global Environment Persistence via getgenv()
+getgenv().BugRevEnv = getgenv().BugRevEnv or GameConfig
+local Config = getgenv().BugRevEnv
+
+if getgenv().BugRevLoaded then pcall(function() end) end
+getgenv().BugRevLoaded = true
+
+local function saveConfigFile()
+    pcall(function()
+        if writefile then
+            local fileData = string.format([[
+    return {
+        GAME_NAME = "Bug Evolution",
+        MAX_LEVEL = %s,
+        XP_GAIN_MULT = 1.5,
+        BaseReach = %s,
+        AttackMultiplier = %s,
+        CustomSpeed = %s,
+        SpeedBypass = %s,
+        AutoToolActive = %s,
+        SafeAttackActive = %s,
+        ReachMultiplier = %s,
+        Growth = { Health = 0.06, Damage = 0.04, Speed = 0, Stamina = 0.01 },
+        Combat = { BaseReach = %s, ReachPad = 2.6, SpawnProtection = 15, HatchProtection = 10 }
+    }
+]], 
+                tostring(Config.MaxLevel or 200),
+                tostring(Config.BaseReach or 4.4),
+                tostring(Config.AttackMultiplier or 10),
+                tostring(Config.CustomSpeed or 32),
+                tostring(Config.SpeedBypass or false),
+                tostring(Config.AutoToolActive or false),
+                tostring(Config.SafeAttackActive or false),
+                tostring(Config.ReachMultiplier or 1.0),
+                tostring(Config.BaseReach or 4.4)
+            )
+            writefile(ConfigFileName, fileData)
+        end
+    end)
+end
+
+-- =================================================================
+-- 2. RAYFIELD UI LOADER & CLIENT SYSTEMS
+-- =================================================================
+local success, Rayfield = pcall(function()
+    return loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+end)
+
+if not success or not Rayfield then
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Rayfield Error",
+        Text = "Failed to load Rayfield UI. Check your connection.",
+        Duration = 5
+    })
+    return
+end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+local LocalPlayer = Players.LocalPlayer
+
+local CachedAttackRemotes = {}
+local function checkAndCache(descendant)
+    if descendant:IsA("RemoteEvent") and (descendant.Name == "HitConfirm" or descendant.Name == "Attack") then
+        if not table.find(CachedAttackRemotes, descendant) then
+            table.insert(CachedAttackRemotes, descendant)
+        end
+    end
+end
+
+for _, desc in ipairs(game:GetDescendants()) do checkAndCache(desc) end
+game.DescendantAdded:Connect(checkAndCache)
+
+-- Anti-Cheat Memory Bypass Hook (`getgc`, `getupvalues`, `getconstants`)
+pcall(function()
+    for _, obj in ipairs(getgc(true)) do
+        if type(obj) == "function" then
+            local i = 1
+            while true do
+                local name, val = debug.getupvalue(obj, i)
+                if not name then break end
+                if type(val) == "number" and val > 0 and val < 5 then
+                    pcall(debug.setupvalue, obj, i, 0)
+                elseif type(val) == "table" then
+                    rawset(val, "Cooldown", 0)
+                    rawset(val, "Debounce", false)
+                    rawset(val, "AttackCooldown", 0)
+                end
+                i = i + 1
+            end
+            local successConst, constants = pcall(getconstants, obj)
+            if successConst and constants then
+                for idx, const in ipairs(constants) do
+                    if type(const) == "number" and const > 0.1 and const < 5 then
+                        pcall(setconstant, obj, idx, 0)
+                    end
+                end
+            end
+        elseif type(obj) == "table" then
+            rawset(obj, "Cooldown", 0)
+            rawset(obj, "Debounce", false)
+            rawset(obj, "AttackCooldown", 0)
+        end
+    end
+end)
+
+-- Velocity Speed Bypass Loop
+RunService.Heartbeat:Connect(function(dt)
+    if Config.SpeedBypass and LocalPlayer.Character then
+        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hrp and hum and hum.MoveDirection.Magnitude > 0 then
+            hrp.AssemblyLinearVelocity = Vector3.new(
+                hum.MoveDirection.X * Config.CustomSpeed,
+                hrp.AssemblyLinearVelocity.Y,
+                hum.MoveDirection.Z * Config.CustomSpeed
+            )
+        end
+    end
+end)
+
+-- 10x Attack Loop
+task.spawn(function()
+    while true do
+        task.wait(0.15)
+        if Config.SafeAttackActive and #CachedAttackRemotes > 0 then
+            for _, remote in ipairs(CachedAttackRemotes) do
+                pcall(function()
+                    if remote and remote.Parent then
+                        for i = 1, (Config.AttackMultiplier or 10) do
+                            remote:FireServer({
+                                Time = tick() + (i * 0.001),
+                                Timestamp = os.time(),
+                                Index = i,
+                                Reach = (Config.BaseReach or 4.4) * Config.ReachMultiplier
+                            })
+                            task.wait(0.02)
+                        end
+                    end
+                end)
+            end
+        end
+    end
+end)
+
+-- Auto Tool Burst Loop
+task.spawn(function()
+    while true do
+        if Config.AutoToolActive then
+            pcall(function()
+                local char = LocalPlayer.Character
+                if char then
+                    local tool = char:FindFirstChildOfClass("Tool") or LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
+                    if tool then
+                        if tool.Parent ~= char then tool.Parent = char end
+                        tool:Activate()
+                        VirtualUser:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+                        task.wait(0.05)
+                        VirtualUser:Button1Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+                    end
+                end
+            end)
+        end
+        task.wait(0.2)
+    end
+end)
+
+-- =================================================================
+-- 3. RAYFIELD UI WINDOW & TABS
+-- =================================================================
+local Window = Rayfield:CreateWindow({
+    Name = "🐛 Bug Revolution | Full Master Suite",
+    LoadingTitle = "Loading Complete Suite...",
+    LoadingSubtitle = "Powered by Workspace Files & Rayfield",
+    ConfigurationSaving = { Enabled = false },
+    KeySystem = false
+})
+
+local CombatTab = Window:CreateTab("⚔️ Combat", nil)
+local EditorTab = Window:CreateTab("✏️ Live Stat Editor", nil)
+local FilesTab  = Window:CreateTab("📁 Local Configs", nil)
+local MiscTab   = Window:CreateTab("⚙️ Movement & Misc", nil)
+
+-- Combat Tab
+CombatTab:CreateSection("Combat Multipliers & Reach")
+CombatTab:CreateToggle({
+    Name = "Stealth Attack Loop",
+    CurrentValue = Config.SafeAttackActive,
+    Callback = function(State) Config.SafeAttackActive = State; saveConfigFile() end
+})
+CombatTab:CreateToggle({
+    Name = "Auto Tool Activation",
+    CurrentValue = Config.AutoToolActive,
+    Callback = function(State) Config.AutoToolActive = State; saveConfigFile() end
+})
+CombatTab:CreateSlider({
+    Name = "Reach Multiplier",
+    Range = {1.0, 3.0},
+    Increment = 0.1,
+    CurrentValue = Config.ReachMultiplier or 1.0,
+    Callback = function(Value) Config.ReachMultiplier = Value; saveConfigFile() end
+})
+
+-- Live Stat Editor Tab
+EditorTab:CreateSection("Live Configuration Editing")
+EditorTab:CreateInput({
+    Name = "Base Reach",
+    PlaceholderText = tostring(Config.BaseReach or 4.4),
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        local num = tonumber(Text)
+        if num then Config.BaseReach = num; saveConfigFile() end
+    end
+})
+EditorTab:CreateInput({
+    Name = "Max Level",
+    PlaceholderText = tostring(Config.MaxLevel or 200),
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        local num = tonumber(Text)
+        if num then Config.MaxLevel = num; saveConfigFile() end
+    end
+})
+EditorTab:CreateSlider({
+    Name = "Burst Attack Multiplier",
+    Range = {1, 25},
+    Increment = 1,
+    CurrentValue = Config.AttackMultiplier or 10,
+    Callback = function(Value) Config.AttackMultiplier = Value; saveConfigFile() end
+})
+EditorTab:CreateButton({
+    Name = "Save Current Stats to File",
+    Callback = function()
+        saveConfigFile()
+        Rayfield:Notify({Title = "Saved!", Content = "Live stats written to workspace file.", Duration = 3})
+    end
+})
+
+-- Files Tab
+FilesTab:CreateSection("Permanent Workspace Files (5/5)")
+FilesTab:CreateButton({
+    Name = "Reload All 5 Config Files",
+    Callback = function()
+        pcall(function()
+            GameConfig   = loadWorkspaceFile(ConfigFileName, GameConfig)
+            SpiderConfig = loadWorkspaceFile(SpiderFileName, SpiderConfig)
+            TraitConfig  = loadWorkspaceFile(TraitFileName, TraitConfig)
+            StagesConfig = loadWorkspaceFile(StagesFileName, StagesConfig)
+            SignalModule = loadWorkspaceFile(SignalFileName, SignalModule)
+        end)
+        Rayfield:Notify({Title = "Reloaded", Content = "All 5 workspace files refreshed.", Duration = 3})
+    end
+})
+FilesTab:CreateButton({
+    Name = "Print Status to Console (F9)",
+    Callback = function()
+        print("--- Full Master Suite Log ---")
+        print("Spiders Loaded:", #SpiderConfig, "| Traits Loaded:", #TraitConfig)
+        print("BaseReach:", Config.BaseReach, "| MaxLevel:", Config.MaxLevel)
+        Rayfield:Notify({Title = "Logged", Content = "Check F9 developer console.", Duration = 3})
+    end
+})
+
+-- Misc Tab
+MiscTab:CreateSection("Movement & Visuals")
+MiscTab:CreateToggle({
+    Name = "Speed Bypass (Velocity)",
+    CurrentValue = Config.SpeedBypass,
+    Callback = function(State) Config.SpeedBypass = State; saveConfigFile() end
+})
+MiscTab:CreateSlider({
+    Name = "Custom Speed Multiplier",
+    Range = {16, 120},
+    Increment = 1,
+    CurrentValue = Config.CustomSpeed or 32,
+    Callback = function(Value) Config.CustomSpeed = Value; saveConfigFile() end
+})
+MiscTab:CreateButton({
+    Name = "Fullbright (Lighting Fix)",
+    Callback = function()
+        pcall(function()
+            game:GetService("Lighting").ClockTime = 12
+            game:GetService("Lighting").Brightness = 2
+            game:GetService("Lighting").GlobalShadows = false
+        end)
+        Rayfield:Notify({Title = "Fullbright", Content = "Lighting cleared.", Duration = 2})
+    end
+})
+
+Rayfield:Notify({
+    Title = "Full Master Suite Loaded!",
+    Content = "All data tables, files, and live editors active.",
+    Duration = 5
+})
