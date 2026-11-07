@@ -1,9 +1,8 @@
 --[[
-    Bug Evolution | Ultimate Master Suite (Fixed Nil Value Error)
-    - Removed unsupported getconstants call to fix the startup crash
-    - Full getgenv(), getgc(), and debug.getupvalue() memory hooks active
-    - Injected Config (Max Level 900, 50x XP, 10.9x Coins, Custom Speed/Combat)
-    - All 30+ Game Remotes Mapped with Zero Cooldowns
+    Bug Evolution | Ultimate Master Suite (Safe Memory Hooks & Fully Fixed)
+    - Safe pcall wrappers around getgc() / getupvalues() to prevent nil crashes on Delta
+    - Full Injected Config (Max Level 900, 50x XP, 10.9x Coins, Auto-Lock Force Loop)
+    - Dual-source Rayfield Loader & All 30+ Game Remotes Mapped with Zero Cooldowns
 ]]
 
 local Rayfield
@@ -83,36 +82,37 @@ getgenv().BugRevEnv = getgenv().BugRevEnv or {
 local Env = getgenv().BugRevEnv
 
 -- =================================================================
--- 2. SAFE ANTI-CHEAT & ZERO-COOLDOWN NEUTRALIZATION (`getgc`, `getupvalues`)
+-- 2. BULLETPROOF SAFE MEMORY HOOKS (`getgc` / `getupvalues`)
 -- =================================================================
 pcall(function()
-    print("[BugRev] Neutralizing all game cooldowns and anti-cheat hooks...")
-    for _, obj in ipairs(getgc(true)) do
-        if type(obj) == "function" then
-            local i = 1
-            while true do
-                local name, val = debug.getupvalue(obj, i)
-                if not name then break end
-                if type(val) == "number" and val > 0 and val < 30 then 
-                    pcall(debug.setupvalue, obj, i, 0)
-                elseif type(val) == "table" then 
-                    rawset(val, "Cooldown", 0)
-                    rawset(val, "Debounce", false)
-                    rawset(val, "AttackCooldown", 0)
-                    rawset(val, "SkillCooldown", 0)
-                    rawset(val, "AbilityCooldown", 0)
+    if type(getgc) == "function" then
+        print("[BugRev] Neutralizing game cooldowns via getgc...")
+        for _, obj in ipairs(getgc(true)) do
+            if type(obj) == "function" then
+                local i = 1
+                while true do
+                    local name, val = debug.getupvalue(obj, i)
+                    if not name then break end
+                    if type(val) == "number" and val > 0 and val < 30 then 
+                        pcall(debug.setupvalue, obj, i, 0)
+                    elseif type(val) == "table" then 
+                        rawset(val, "Cooldown", 0)
+                        rawset(val, "Debounce", false)
+                        rawset(val, "AttackCooldown", 0)
+                        rawset(val, "SkillCooldown", 0)
+                        rawset(val, "AbilityCooldown", 0)
+                    end
+                    i = i + 1
                 end
-                i = i + 1
+            elseif type(obj) == "table" then
+                rawset(obj, "Cooldown", 0)
+                rawset(obj, "Debounce", false)
+                rawset(obj, "AttackCooldown", 0)
+                rawset(obj, "SkillCooldown", 0)
+                rawset(obj, "AbilityCooldown", 0)
             end
-        elseif type(obj) == "table" then
-            rawset(obj, "Cooldown", 0)
-            rawset(obj, "Debounce", false)
-            rawset(obj, "AttackCooldown", 0)
-            rawset(obj, "SkillCooldown", 0)
-            rawset(obj, "AbilityCooldown", 0)
         end
     end
-    print("[BugRev] All cooldowns completely stripped!")
 end)
 
 -- =================================================================
@@ -459,7 +459,7 @@ ConfigTab:CreateInput({
 
 Rayfield:Notify({
     Title = "Ultimate Master Suite Loaded!",
-    Content = "Error fixed! Config fully injected, auto-locked, and remotes active.",
+    Content = "Error resolved. Safe memory hooks active, config injected & locked.",
     Duration = 5,
     Image = 4483362458
 })
