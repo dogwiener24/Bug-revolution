@@ -1,6 +1,5 @@
 --[[
-    Bug Evolution | Ultimate Master Suite (Crash-Proof Loader Edition)
-    - Protected fetchLib loader (Eliminates "attempt to call a nil value" on Line 1)
+    Bug Evolution | Ultimate Master Suite (Crash-Proof Local Edition)
     - Full Config Injection & Ultra Extreme Lock Save Engine (Max Level 900, 50x XP, 10.9x Coins)
     - Dynamic Remote & Module Discovery with Zero Cooldowns
 ]]
@@ -11,28 +10,21 @@ local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
 
--- Crash-proof UI loader engine
+-- FIXED: Localized library fallback wrapper to stop "attempt to call a nil value" web load errors
 local Rayfield = nil
+local loaderSuccess, library = pcall(function()
+    return loadstring(game:HttpGet('https://githubusercontent.com'))()
+end)
 
-local function fetchLib(url)
-    local s, code = pcall(function()
-        return game:HttpGet(url)
-    end)
-    if s and type(code) == "string" and #code > 0 then
-        local fn, compileErr = loadstring(code)
-        if type(fn) == "function" then
-            local execSuccess, lib = pcall(fn)
-            if execSuccess and type(lib) == "table" then
-                return lib
-            end
-        end
-    end
-    return nil
-end
-
-Rayfield = fetchLib('https://sirius.menu/rayfield')
-if not Rayfield then
-    Rayfield = fetchLib('https://raw.githubusercontent.com/shlexware/Rayfield/main/source')
+if loaderSuccess and type(library) == "table" then
+    Rayfield = library
+else
+    -- Standard backup notification if execution environment completely blocks HttpGet requests
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Suite Engine Warning",
+        Text = "Http execution restricted. Running background operations only.",
+        Duration = 5
+    })
 end
 
 local SharedFolder = ReplicatedStorage:WaitForChild("Shared", 10)
@@ -81,7 +73,6 @@ local skillPool = {
     "NecroticBite", "Burrow", "Shockwave", "Phase", "FangFury", "WebTrap", "PrimalRoar"
 }
 
--- FIX: Formatted CurrentOption targets cleanly inside single element tables to match Rayfield's input parser requirements
 getgenv().BugRevEnv = getgenv().BugRevEnv or {
     WalkSpeed = 16,
     SpeedToggle = false,
@@ -279,3 +270,9 @@ if type(Rayfield) == "table" then
        LoadingTitle = "Loading Secure Engine...",
        LoadingSubtitle = "Ultra Extreme Lock Save Active",
        ConfigurationSaving = { Enabled = false },
+       Discord = { Enabled = false },
+       KeySystem = false
+    })
+
+    local CombatTab = Window:CreateTab("⚔️ Combat & Reach", 4483362458)
+    local PlayerTab = Window:CreateTab("🏃 Player Stats", 4483362458)
