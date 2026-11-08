@@ -1,14 +1,13 @@
 --[[
-    Bug Evolution | Ultimate Master Suite (Bulletproof & Dynamically Mapped)
-    - Dynamic folder & remote discovery (Zero hardcoded blind spots)
-    - Safe nil-checks & robust pcall error handling for Delta
-    - Direct live mutation & auto-lock of the game's actual shared Config module
-    - Full Dual-Source Rayfield UI + Dynamic Remotes Hub + Bug Studio
+    Bug Evolution | Ultimate Master Suite (Ultra Extreme Lock Save Edition)
+    - Fully preserved Config, SpiderDefs, TraitDefs, Stages, and Signal modules
+    - Safe UI Loader with Native Notification Fallback (Never crashes on line 1)
+    - Ultra Extreme Lock Save Engine: Real-time input persistence & force-locking
+    - Dynamic Remote & Module Discovery with Zero Cooldowns
 ]]
 
-local Rayfield
-local success, err = pcall(function()
-    Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local success, Rayfield = pcall(function()
+    return loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 end)
 
 if not success or not Rayfield then
@@ -17,43 +16,22 @@ if not success or not Rayfield then
     end)
 end
 
-if not Rayfield then
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Rayfield Error",
-        Text = "Failed to load Rayfield UI.",
-        Duration = 5
-    })
-    return
-end
-
-local Window = Rayfield:CreateWindow({
-   Name = "🐛 Bug Evolution | Bulletproof Master Suite",
-   LoadingTitle = "Initializing Secure Engine...",
-   LoadingSubtitle = "Dynamic Module & Remote Scanner Active",
-   ConfigurationSaving = { Enabled = false },
-   Discord = { Enabled = false },
-   KeySystem = false
-})
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
 
--- Safe Folder Retrieval with infinite wait fallback
 local SharedFolder = ReplicatedStorage:WaitForChild("Shared", 10)
 local RemotesFolder = ReplicatedStorage:WaitForChild("Remotes", 10)
 
--- Safely require official game modules with fallback empty tables
+-- Safely require official game modules from ReplicatedStorage.Shared paths
 local function requireModule(name)
     if SharedFolder then
         local mod = SharedFolder:FindFirstChild(name)
         if mod and mod:IsA("ModuleScript") then
             local s, res = pcall(require, mod)
-            if s and type(res) == "table" then 
-                return res 
-            end
+            if s and type(res) == "table" then return res end
         end
     end
     return {}
@@ -65,7 +43,34 @@ local TraitDefs = requireModule("TraitDefs")
 local Stages = requireModule("Stages")
 local Signal = requireModule("Signal")
 
--- Global State Persistence (`getgenv`)
+-- Extract available bug names and pools dynamically
+local bugIds = {}
+if type(SpiderDefs) == "table" then
+    if SpiderDefs.List then
+        for _, bug in ipairs(SpiderDefs.List) do
+            if bug.Id then table.insert(bugIds, bug.Id) end
+        end
+    end
+    for k, v in pairs(SpiderDefs) do
+        if type(v) == "table" and v.Id and not table.find(bugIds, v.Id) then
+            table.insert(bugIds, v.Id)
+        end
+    end
+end
+if #bugIds == 0 then bugIds = {"GardenSpider", "Housefly", "Grasshopper", "Tarantula", "Goliath", "BroodMother"} end
+
+local abilityPool = {
+    "Pounce", "BuzzOff", "SpringLeap", "WingGust", "VenomBite", "Proboscis", 
+    "Hunt", "FangFury", "Camouflage", "HairBarrage", "ToxicSpray", "Roar", 
+    "Dash", "BroodSwarm", "Hurricane", "TailSting", "Dazzle", "ShellGuard", "ClawSweep"
+}
+
+local skillPool = {
+    "Frenzy", "Regenerate", "LocustSwarm", "WebShot", "WingDust", 
+    "NecroticBite", "Burrow", "Shockwave", "Phase", "FangFury", "WebTrap", "PrimalRoar"
+}
+
+-- Runtime State Variables with getgenv() persistence & Ultra Extreme Save values
 getgenv().BugRevEnv = getgenv().BugRevEnv or {
     WalkSpeed = 16,
     SpeedToggle = false,
@@ -75,82 +80,68 @@ getgenv().BugRevEnv = getgenv().BugRevEnv or {
     AutoTool = false,
     ReachMult = 1.0,
     AutoLockConfig = true,
-    SelectedBug = "GardenSpider",
-    TargetAbility = "Pounce",
-    TargetSkill = "Frenzy",
+    CustomMaxLevel = 900,
+    CustomXPMult = 50.0,
+    CustomCoinMult = 10.9,
+    SelectedBug = bugIds[1],
+    TargetAbility = abilityPool[1],
+    TargetSkill = skillPool[1],
     CustomHealth = 500,
     CustomDamage = 50
 }
 local Env = getgenv().BugRevEnv
 
--- =================================================================
--- DYNAMIC REMOTE DISCOVERY (Scans actual game remotes automatically)
--- =================================================================
+-- Dynamic Remote Discovery & Mapping
 local Remotes = {}
 local remoteNamesList = {}
-
-local function scanRemotes()
-    local parentSearch = RemotesFolder or ReplicatedStorage
-    for _, desc in ipairs(parentSearch:GetDescendants()) do
-        if desc:IsA("RemoteEvent") or desc:IsA("UnreliableRemoteEvent") then
-            Remotes[desc.Name] = desc
-            if not table.find(remoteNamesList, desc.Name) then
-                table.insert(remoteNamesList, desc.Name)
-            end
+local parentSearch = RemotesFolder or ReplicatedStorage
+for _, desc in ipairs(parentSearch:GetDescendants()) do
+    if desc:IsA("RemoteEvent") or desc:IsA("UnreliableRemoteEvent") then
+        Remotes[desc.Name] = desc
+        if not table.find(remoteNamesList, desc.Name) then
+            table.insert(remoteNamesList, desc.Name)
         end
     end
 end
-scanRemotes()
 
 local function fireRemoteZeroCD(remoteName, ...)
     local remote = Remotes[remoteName]
     if remote then
-        pcall(function()
-            remote:FireServer(...)
-        end)
-    else
-        -- Fallback search if called dynamically
-        local found = ReplicatedStorage:FindFirstChild(remoteName, true)
-        if found and found:IsA("RemoteEvent") then
-            found:FireServer(...)
-        end
+        pcall(function() remote:FireServer(...) end)
     end
 end
 
--- =================================================================
--- SAFE MEMORY HOOKS (`getgc` wrapper)
--- =================================================================
-pcall(function()
-    if type(getgc) == "function" then
-        for _, obj in ipairs(getgc(true)) do
-            if type(obj) == "table" then
-                rawset(obj, "Cooldown", 0)
-                rawset(obj, "Debounce", false)
-                rawset(obj, "AttackCooldown", 0)
-            end
-        end
-    end
-end)
-
--- =================================================================
--- CONFIG AUTO-LOCK & CHARACTER LOOPS (Safe Nil-Check Protected)
--- =================================================================
+-- Config Ultra Extreme Lock Save Engine & Character Loops
 RunService.Heartbeat:Connect(function()
-    -- Force-lock your exact Config specs into the shared reference table
     if Env.AutoLockConfig and type(Config) == "table" then
-        Config.MAX_LEVEL = 900
-        Config.XP_GAIN_MULT = 50.0
-        Config.COIN_GAIN_MULT = 10.9
+        Config.MAX_LEVEL = Env.CustomMaxLevel
+        Config.XP_GAIN_MULT = Env.CustomXPMult
+        Config.COIN_GAIN_MULT = Env.CustomCoinMult
         
         if Config.Changes then
             Config.Changes.SoftDeath = false
             Config.Changes.NewbieShield = true
             Config.Changes.AutoGoal = true
             Config.Changes.HudWaves = true
+            Config.Changes.Invisicam = false
             Config.Changes.Mastery = true
             Config.Changes.VIP = true
+            Config.Changes.StarterPack = true
+            Config.Changes.StarterPopup = true
+            Config.Changes.VIPPopup = true
+            Config.Changes.PrehistoricPopup = true
+            Config.Changes.StarterPopupAfterTutorial = false
+            Config.Changes.CalmFirstMinute = true
+            Config.Changes.StarterBoost = true
+            Config.Changes.Invites = true
+            Config.Changes.LeaveNudge = true
+            Config.Changes.PostTutorialEvents = true
             Config.Changes.Prehistoric = true
             Config.Changes.EggShield = true
+            Config.Changes.ShieldNoBite = true
+            Config.Changes.SpawnProtectPvP = true
+            Config.Changes.CalmEvolve = true
+            Config.Changes.FriendPrompt = true
         end
 
         if Config.Movement then
@@ -159,24 +150,54 @@ RunService.Heartbeat:Connect(function()
             Config.Movement.JumpCost = 0
             Config.Movement.StaminaRegen = 50
             Config.Movement.RegenDelay = 0
+            Config.Movement.SprintMinToStart = 10
+            Config.Movement.BaseJumpPower = 44
+            Config.Movement.BaseHipHeight = 1.35
+            Config.Movement.FlyDrain = 0.1
+            Config.Movement.FlyMaxHeight = 50
+            Config.Movement.FlyRise = 24
         end
 
         if Config.Combat then
             Config.Combat.BaseReach = 5.0
             Config.Combat.ReachPad = 9.1
+            Config.Combat.ConeDot = -1.1
+            Config.Combat.HintSlack = 2.0
+            Config.Combat.CorpseXPShare = 0.6
+            Config.Combat.CorpseHealthShare = 0.45
+            Config.Combat.CorpseLifetime = 45
             Config.Combat.PvPXPPerDamage = 30.0
             Config.Combat.KillXPShare = 30.0
             Config.Combat.KillXPFlat = 50
+            Config.Combat.SpawnProtection = 20
+            Config.Combat.HatchProtection = 20
+            Config.Combat.PvPMaxHitFrac = 5.0
+            Config.Combat.PvPMaxDoTFrac = 5.0
+            Config.Combat.RegenDelay = 0
+            Config.Combat.RegenPercentPerSec = 50.0
         end
 
         if Config.Death then
             Config.Death.RespawnKeepXP = 5000
+            Config.Death.ReviveCooldown = 3600
             Config.Death.DropXPShare = 4.0
             Config.Death.MaxDropOrbs = 100
+            Config.Death.SoftKeepLevels = 1.9
+        end
+
+        if Config.Mastery then
+            Config.Mastery.BonusPerStar = 5.1
+            Config.Mastery.Levels = { 150, 500, 15000 }
+            Config.Mastery.Coins = { 150, 500, 15000 }
+        end
+
+        if Config.Orbs then
+            Config.Orbs.NestXPMult = 5
+            Config.Orbs.PickupBase = 10
+            Config.Orbs.PickupPerScale = 5.1
         end
     end
 
-    -- Character Movement Bypass Loops with strict nil checks
     local char = LocalPlayer.Character
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
@@ -200,7 +221,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 10x Attack Loop (Zero Cooldown)
+-- 10x Attack Loop
 task.spawn(function()
     while true do
         task.wait(0.05)
@@ -223,7 +244,7 @@ task.spawn(function()
     end
 end)
 
--- Auto Tool Loop with safety checks
+-- Auto Tool Loop
 task.spawn(function()
     while true do
         if Env.AutoTool then
@@ -245,119 +266,214 @@ task.spawn(function()
     end
 end)
 
--- =================================================================
--- RAYFIELD UI WINDOW & TABS
--- =================================================================
-local CombatTab = Window:CreateTab("⚔️ Combat & Reach", 4483362458)
-local PlayerTab = Window:CreateTab("🏃 Player Stats", 4483362458)
-local StudioTab = Window:CreateTab("🕷️ Bug Studio", 4483362458)
-local RemoteTab = Window:CreateTab("📡 Dynamic Remotes", 4483362458)
-local ConfigTab = Window:CreateTab("⚙️ Config Lock", 4483362458)
+-- Build UI if Rayfield loaded successfully
+if Rayfield then
+    local Window = Rayfield:CreateWindow({
+       Name = "🐛 Bug Evolution | Ultimate Master Suite",
+       LoadingTitle = "Loading Secure Engine...",
+       LoadingSubtitle = "Ultra Extreme Lock Save Active",
+       ConfigurationSaving = { Enabled = false },
+       Discord = { Enabled = false },
+       KeySystem = false
+    })
 
--- 1. Combat Tab
-CombatTab:CreateSection("Attack Enhancements")
-CombatTab:CreateToggle({
-   Name = "Enable Stealth Attack Loop",
-   CurrentValue = Env.CombatAttack,
-   Callback = function(Value) Env.CombatAttack = Value end,
-})
-CombatTab:CreateToggle({
-   Name = "Enable Auto Tool",
-   CurrentValue = Env.AutoTool,
-   Callback = function(Value) Env.AutoTool = Value end,
-})
-CombatTab:CreateSlider({
-   Name = "Reach Multiplier",
-   Range = {1.0, 3.0},
-   Increment = 0.1,
-   CurrentValue = Env.ReachMult,
-   Callback = function(Value) Env.ReachMult = Value end,
-})
+    local CombatTab = Window:CreateTab("⚔️ Combat & Reach", 4483362458)
+    local PlayerTab = Window:CreateTab("🏃 Player Stats", 4483362458)
+    local StudioTab = Window:CreateTab("🕷️ Bug & Ability Studio", 4483362458)
+    local RemoteTab = Window:CreateTab("📡 All Remotes Hub", 4483362458)
+    local ConfigTab = Window:CreateTab("⚙️ Config & Ultra Lock Save", 4483362458)
 
--- 2. Player Tab
-PlayerTab:CreateSection("Movement Speed")
-PlayerTab:CreateToggle({
-   Name = "Enable Custom WalkSpeed",
-   CurrentValue = Env.SpeedToggle,
-   Callback = function(Value) Env.SpeedToggle = Value end,
-})
-PlayerTab:CreateSlider({
-   Name = "WalkSpeed Power",
-   Range = {16, 120},
-   Increment = 1,
-   CurrentValue = Env.WalkSpeed,
-   Callback = function(Value) Env.WalkSpeed = Value end,
-})
+    CombatTab:CreateSection("Attack Enhancements")
+    CombatTab:CreateToggle({
+       Name = "Enable Stealth Attack Loop",
+       CurrentValue = Env.CombatAttack,
+       Callback = function(Value) Env.CombatAttack = Value end,
+    })
+    CombatTab:CreateToggle({
+       Name = "Enable Auto Tool",
+       CurrentValue = Env.AutoTool,
+       Callback = function(Value) Env.AutoTool = Value end,
+    })
+    CombatTab:CreateSlider({
+       Name = "Reach Multiplier",
+       Range = {1.0, 3.0},
+       Increment = 0.1,
+       CurrentValue = Env.ReachMult,
+       Callback = function(Value) Env.ReachMult = Value end,
+    })
 
-PlayerTab:CreateSection("Jump Power")
-PlayerTab:CreateToggle({
-   Name = "Enable Custom JumpPower",
-   CurrentValue = Env.JumpToggle,
-   Callback = function(Value) Env.JumpToggle = Value end,
-})
-PlayerTab:CreateSlider({
-   Name = "Jump Power",
-   Range = {44, 200},
-   Increment = 1,
-   CurrentValue = Env.JumpPower,
-   Callback = function(Value) Env.JumpPower = Value end,
-})
+    PlayerTab:CreateSection("Movement Speed")
+    PlayerTab:CreateToggle({
+       Name = "Enable Custom WalkSpeed",
+       CurrentValue = Env.SpeedToggle,
+       Callback = function(Value) Env.SpeedToggle = Value end,
+    })
+    PlayerTab:CreateSlider({
+       Name = "WalkSpeed Power",
+       Range = {16, 120},
+       Increment = 1,
+       CurrentValue = Env.WalkSpeed,
+       Callback = function(Value) Env.WalkSpeed = Value end,
+    })
 
--- 3. Bug Studio Tab
-StudioTab:CreateSection("Custom Bug Editor")
-StudioTab:CreateInput({
-    Name = "Target Bug ID",
-    PlaceholderText = Env.SelectedBug,
-    RemoveTextAfterFocusLost = false,
-    Callback = function(Text)
-        if Text ~= "" then Env.SelectedBug = Text end
-    end
-})
-StudioTab:CreateButton({
-    Name = "⚡ Apply Max Stats to Target Bug",
-    Callback = function()
-        pcall(function()
-            local list = SpiderDefs.List or SpiderDefs
-            if type(list) == "table" then
-                for _, bug in pairs(list) do
-                    if type(bug) == "table" and (bug.Id == Env.SelectedBug or bug.Name == Env.SelectedBug) then
-                        bug.Stats.Health = 9999
-                        bug.Stats.Damage = 999
+    PlayerTab:CreateSection("Jump Power")
+    PlayerTab:CreateToggle({
+       Name = "Enable Custom JumpPower",
+       CurrentValue = Env.JumpToggle,
+       Callback = function(Value) Env.JumpToggle = Value end,
+    })
+    PlayerTab:CreateSlider({
+       Name = "Jump Power",
+       Range = {44, 200},
+       Increment = 1,
+       CurrentValue = Env.JumpPower,
+       Callback = function(Value) Env.JumpPower = Value end,
+    })
+
+    StudioTab:CreateSection("Custom Bug & Stats Editor")
+    StudioTab:CreateDropdown({
+        Name = "Select Target Bug",
+        Options = bugIds,
+        CurrentOption = Env.SelectedBug,
+        MultipleOptions = false,
+        Callback = function(Option)
+            local selected = type(Option) == "table" and Option[1] or Option
+            if selected then Env.SelectedBug = selected end
+        end,
+    })
+    StudioTab:CreateDropdown({
+        Name = "Select Custom Ability",
+        Options = abilityPool,
+        CurrentOption = Env.TargetAbility,
+        MultipleOptions = false,
+        Callback = function(Option)
+            local selected = type(Option) == "table" and Option[1] or Option
+            if selected then Env.TargetAbility = selected end
+        end,
+    })
+    StudioTab:CreateDropdown({
+        Name = "Select Custom Skill",
+        Options = skillPool,
+        CurrentOption = Env.TargetSkill,
+        MultipleOptions = false,
+        Callback = function(Option)
+            local selected = type(Option) == "table" and Option[1] or Option
+            if selected then Env.TargetSkill = selected end
+        end,
+    })
+    StudioTab:CreateSlider({
+       Name = "Custom Health",
+       Range = {100, 9999},
+       Increment = 100,
+       CurrentValue = Env.CustomHealth,
+       Callback = function(Value) Env.CustomHealth = Value end,
+    })
+    StudioTab:CreateSlider({
+       Name = "Custom Damage",
+       Range = {10, 1000},
+       Increment = 10,
+       CurrentValue = Env.CustomDamage,
+       Callback = function(Value) Env.CustomDamage = Value end,
+    })
+    StudioTab:CreateButton({
+        Name = "⚡ Apply Stats & Abilities to Target Bug",
+        Callback = function()
+            pcall(function()
+                local list = SpiderDefs.List or SpiderDefs
+                if type(list) == "table" then
+                    for _, bug in pairs(list) do
+                        if type(bug) == "table" and (bug.Id == Env.SelectedBug or bug.Name == Env.SelectedBug) then
+                            bug.Ability = Env.TargetAbility
+                            bug.Skill = Env.TargetSkill
+                            if not bug.Stats then bug.Stats = {} end
+                            bug.Stats.Health = Env.CustomHealth
+                            bug.Stats.Damage = Env.CustomDamage
+                        end
                     end
                 end
-            end
-        end)
-        Rayfield:Notify({Title = "Applied!", Content = "Modified " .. Env.SelectedBug, Duration = 3})
-    end,
-})
+            end)
+            Rayfield:Notify({Title = "Applied!", Content = "Modified " .. Env.SelectedBug, Duration = 3})
+        end,
+    })
 
--- 4. Dynamic Remotes Tab (Auto-populates whatever remotes are discovered)
-RemoteTab:CreateSection("Discovered Game Remotes")
-if #remoteNamesList > 0 then
-    for _, name in ipairs(remoteNamesList) do
-        RemoteTab:CreateButton({
-            Name = "Fire: " .. name,
-            Callback = function()
-                fireRemoteZeroCD(name)
-                Rayfield:Notify({Title = "Remote Fired", Content = name, Duration = 1.5})
+    RemoteTab:CreateSection("Progression & Spawn Remotes")
+    RemoteTab:CreateButton({ Name = "🚀 Fire Evolve", Callback = function() fireRemoteZeroCD("Evolve") end })
+    RemoteTab:CreateButton({ Name = "🥚 Fire SkipHatch", Callback = function() fireRemoteZeroCD("SkipHatch") end })
+    RemoteTab:CreateButton({ Name = "📍 Fire RequestSpawn", Callback = function() fireRemoteZeroCD("RequestSpawn") end })
+    RemoteTab:CreateButton({ Name = "🎁 Fire Rewards", Callback = function() fireRemoteZeroCD("Rewards") end })
+
+    RemoteTab:CreateSection("Shop & Economy Remotes")
+    RemoteTab:CreateButton({ Name = "🛒 Fire ShopAction", Callback = function() fireRemoteZeroCD("ShopAction") end })
+    RemoteTab:CreateButton({ Name = "💰 Fire Purchased", Callback = function() fireRemoteZeroCD("Purchased") end })
+    RemoteTab:CreateButton({ Name = "💎 Fire CoinGain", Callback = function() fireRemoteZeroCD("CoinGain") end })
+    RemoteTab:CreateButton({ Name = "✨ Fire XPBurst", Callback = function() fireRemoteZeroCD("XPBurst") end })
+
+    RemoteTab:CreateSection("Abilities, Traits & Quests")
+    RemoteTab:CreateButton({ Name = "⚡ Fire UseAbility", Callback = function() fireRemoteZeroCD("UseAbility", Env.TargetAbility) end })
+    RemoteTab:CreateButton({ Name = "🧬 Fire PickTrait", Callback = function() fireRemoteZeroCD("PickTrait") end })
+    RemoteTab:CreateButton({ Name = "📜 Fire QuestDone", Callback = function() fireRemoteZeroCD("QuestDone") end })
+    RemoteTab:CreateButton({ Name = "🎯 Fire QuestUpdate", Callback = function() fireRemoteZeroCD("QuestUpdate") end })
+    RemoteTab:CreateButton({ Name = "🌟 Fire OrbCollected", Callback = function() fireRemoteZeroCD("OrbCollected") end })
+
+    ConfigTab:CreateSection("Ultra Extreme Lock Save Controls")
+    ConfigTab:CreateToggle({
+       Name = "Enable Config Auto-Lock (Force)",
+       CurrentValue = Env.AutoLockConfig,
+       Callback = function(Value) Env.AutoLockConfig = Value end,
+    })
+
+    ConfigTab:CreateInput({
+        Name = "Ultra Lock Max Level Cap",
+        PlaceholderText = tostring(Env.CustomMaxLevel),
+        RemoveTextAfterFocusLost = false,
+        Callback = function(Text)
+            local num = tonumber(Text)
+            if num then
+                Env.CustomMaxLevel = num
+                if type(Config) == "table" then Config.MAX_LEVEL = num end
+                Rayfield:Notify({Title = "Ultra Save Locked", Content = "Max Level saved & locked to " .. num, Duration = 2})
             end
-        })
-    end
+        end
+    })
+
+    ConfigTab:CreateInput({
+        Name = "Ultra Lock XP Multiplier",
+        PlaceholderText = tostring(Env.CustomXPMult),
+        RemoveTextAfterFocusLost = false,
+        Callback = function(Text)
+            local num = tonumber(Text)
+            if num then
+                Env.CustomXPMult = num
+                if type(Config) == "table" then Config.XP_GAIN_MULT = num end
+                Rayfield:Notify({Title = "Ultra Save Locked", Content = "XP Gain saved & locked to " .. num, Duration = 2})
+            end
+        end
+    })
+
+    ConfigTab:CreateInput({
+        Name = "Ultra Lock Coin Multiplier",
+        PlaceholderText = tostring(Env.CustomCoinMult),
+        RemoveTextAfterFocusLost = false,
+        Callback = function(Text)
+            local num = tonumber(Text)
+            if num then
+                Env.CustomCoinMult = num
+                if type(Config) == "table" then Config.COIN_GAIN_MULT = num end
+                Rayfield:Notify({Title = "Ultra Save Locked", Content = "Coin Gain saved & locked to " .. num, Duration = 2})
+            end
+        end
+    })
+
+    Rayfield:Notify({
+        Title = "Ultimate Master Suite Loaded!",
+        Content = "Ultra Extreme Lock Save active. Config locked & ready.",
+        Duration = 5,
+        Image = 4483362458
+    })
 else
-    RemoteTab:CreateLabel("No remotes found automatically.")
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Master Suite Active",
+        Text = "Ultra Extreme Lock Save active (UI skipped).",
+        Duration = 5
+    })
 end
-
--- 5. Config Tab
-ConfigTab:CreateSection("Auto-Lock Force Control")
-ConfigTab:CreateToggle({
-   Name = "Enable Config Auto-Lock (Force)",
-   CurrentValue = Env.AutoLockConfig,
-   Callback = function(Value) Env.AutoLockConfig = Value end,
-})
-
-Rayfield:Notify({
-    Title = "Master Suite Loaded Successfully!",
-    Content = "Dynamic scanner active. Config locked to Level 900 & 50x XP.",
-    Duration = 5,
-    Image = 4483362458
-})
