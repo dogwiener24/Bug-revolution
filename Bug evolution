@@ -1,25 +1,39 @@
 --[[
-    Bug Evolution | Ultimate Master Suite (Pure Config Injection & Remotes)
-    - Zero memory hooks (Completely immune to Delta nil crashes)
+    Bug Evolution | Ultimate Master Suite (Crash-Proof Loader Edition)
+    - Protected fetchLib loader (Eliminates "attempt to call a nil value" on Line 1)
     - Full Config Injection & Ultra Extreme Lock Save Engine (Max Level 900, 50x XP, 10.9x Coins)
-    - All game remotes mapped with zero cooldowns
+    - Dynamic Remote & Module Discovery with Zero Cooldowns
 ]]
-
-local success, Rayfield = pcall(function()
-    return loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-end)
-
-if not success or not Rayfield then
-    pcall(function()
-        Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
-    end)
-end
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
+
+-- Crash-proof UI loader engine
+local Rayfield = nil
+
+local function fetchLib(url)
+    local s, code = pcall(function()
+        return game:HttpGet(url)
+    end)
+    if s and type(code) == "string" and #code > 0 then
+        local fn, compileErr = loadstring(code)
+        if type(fn) == "function" then
+            local execSuccess, lib = pcall(fn)
+            if execSuccess and type(lib) == "table" then
+                return lib
+            end
+        end
+    end
+    return nil
+end
+
+Rayfield = fetchLib('https://sirius.menu/rayfield')
+if not Rayfield then
+    Rayfield = fetchLib('https://raw.githubusercontent.com/shlexware/Rayfield/main/source')
+end
 
 local SharedFolder = ReplicatedStorage:WaitForChild("Shared", 10)
 local RemotesFolder = ReplicatedStorage:WaitForChild("Remotes", 10)
@@ -258,7 +272,7 @@ task.spawn(function()
     end
 end)
 
-if Rayfield then
+if type(Rayfield) == "table" then
     local Window = Rayfield:CreateWindow({
        Name = "🐛 Bug Evolution | Ultimate Master Suite",
        LoadingTitle = "Loading Secure Engine...",
@@ -460,5 +474,11 @@ if Rayfield then
         Content = "Ultra Extreme Lock Save active. Config locked & ready.",
         Duration = 5,
         Image = 4483362458
+    })
+else
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Master Suite Active",
+        Text = "Ultra Extreme Lock Save active (UI network load failed, background features running).",
+        Duration = 5
     })
 end
