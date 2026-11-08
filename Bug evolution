@@ -81,6 +81,7 @@ local skillPool = {
     "NecroticBite", "Burrow", "Shockwave", "Phase", "FangFury", "WebTrap", "PrimalRoar"
 }
 
+-- FIX: Formatted CurrentOption targets cleanly inside single element tables to match Rayfield's input parser requirements
 getgenv().BugRevEnv = getgenv().BugRevEnv or {
     WalkSpeed = 16,
     SpeedToggle = false,
@@ -93,9 +94,9 @@ getgenv().BugRevEnv = getgenv().BugRevEnv or {
     CustomMaxLevel = 900,
     CustomXPMult = 50.0,
     CustomCoinMult = 10.9,
-    SelectedBug = bugIds[1],
-    TargetAbility = abilityPool[1],
-    TargetSkill = skillPool[1],
+    SelectedBug = { bugIds[1] },
+    TargetAbility = { abilityPool[1] },
+    TargetSkill = { skillPool[1] },
     CustomHealth = 500,
     CustomDamage = 50
 }
@@ -116,7 +117,7 @@ end
 local function fireRemoteZeroCD(remoteName, ...)
     local remote = Remotes[remoteName]
     if remote then
-        pcall(function() remote:FireServer(...) end)
+        pcall(function(...) remote:FireServer(...) end, ...)
     end
 end
 
@@ -274,211 +275,7 @@ end)
 
 if type(Rayfield) == "table" then
     local Window = Rayfield:CreateWindow({
-       Name = "🐛 Bug Evolution | Ultimate Master Suite",
+       Name = "🐛 Bug Evolution | Master Suite",
        LoadingTitle = "Loading Secure Engine...",
        LoadingSubtitle = "Ultra Extreme Lock Save Active",
        ConfigurationSaving = { Enabled = false },
-       Discord = { Enabled = false },
-       KeySystem = false
-    })
-
-    local CombatTab = Window:CreateTab("⚔️ Combat & Reach", 4483362458)
-    local PlayerTab = Window:CreateTab("🏃 Player Stats", 4483362458)
-    local StudioTab = Window:CreateTab("🕷️ Bug & Ability Studio", 4483362458)
-    local RemoteTab = Window:CreateTab("📡 All Remotes Hub", 4483362458)
-    local ConfigTab = Window:CreateTab("⚙️ Config & Ultra Lock Save", 4483362458)
-
-    CombatTab:CreateSection("Attack Enhancements")
-    CombatTab:CreateToggle({
-       Name = "Enable Stealth Attack Loop",
-       CurrentValue = Env.CombatAttack,
-       Callback = function(Value) Env.CombatAttack = Value end,
-    })
-    CombatTab:CreateToggle({
-       Name = "Enable Auto Tool",
-       CurrentValue = Env.AutoTool,
-       Callback = function(Value) Env.AutoTool = Value end,
-    })
-    CombatTab:CreateSlider({
-       Name = "Reach Multiplier",
-       Range = {1.0, 3.0},
-       Increment = 0.1,
-       CurrentValue = Env.ReachMult,
-       Callback = function(Value) Env.ReachMult = Value end,
-    })
-
-    PlayerTab:CreateSection("Movement Speed")
-    PlayerTab:CreateToggle({
-       Name = "Enable Custom WalkSpeed",
-       CurrentValue = Env.SpeedToggle,
-       Callback = function(Value) Env.SpeedToggle = Value end,
-    })
-    PlayerTab:CreateSlider({
-       Name = "WalkSpeed Power",
-       Range = {16, 120},
-       Increment = 1,
-       CurrentValue = Env.WalkSpeed,
-       Callback = function(Value) Env.WalkSpeed = Value end,
-    })
-
-    PlayerTab:CreateSection("Jump Power")
-    PlayerTab:CreateToggle({
-       Name = "Enable Custom JumpPower",
-       CurrentValue = Env.JumpToggle,
-       Callback = function(Value) Env.JumpToggle = Value end,
-    })
-    PlayerTab:CreateSlider({
-       Name = "Jump Power",
-       Range = {44, 200},
-       Increment = 1,
-       CurrentValue = Env.JumpPower,
-       Callback = function(Value) Env.JumpPower = Value end,
-    })
-
-    StudioTab:CreateSection("Custom Bug & Stats Editor")
-    StudioTab:CreateDropdown({
-        Name = "Select Target Bug",
-        Options = bugIds,
-        CurrentOption = Env.SelectedBug,
-        MultipleOptions = false,
-        Callback = function(Option)
-            local selected = type(Option) == "table" and Option[1] or Option
-            if selected then Env.SelectedBug = selected end
-        end,
-    })
-    StudioTab:CreateDropdown({
-        Name = "Select Custom Ability",
-        Options = abilityPool,
-        CurrentOption = Env.TargetAbility,
-        MultipleOptions = false,
-        Callback = function(Option)
-            local selected = type(Option) == "table" and Option[1] or Option
-            if selected then Env.TargetAbility = selected end
-        end,
-    })
-    StudioTab:CreateDropdown({
-        Name = "Select Custom Skill",
-        Options = skillPool,
-        CurrentOption = Env.TargetSkill,
-        MultipleOptions = false,
-        Callback = function(Option)
-            local selected = type(Option) == "table" and Option[1] or Option
-            if selected then Env.TargetSkill = selected end
-        end,
-    })
-    StudioTab:CreateSlider({
-       Name = "Custom Health",
-       Range = {100, 9999},
-       Increment = 100,
-       CurrentValue = Env.CustomHealth,
-       Callback = function(Value) Env.CustomHealth = Value end,
-    })
-    StudioTab:CreateSlider({
-       Name = "Custom Damage",
-       Range = {10, 1000},
-       Increment = 10,
-       CurrentValue = Env.CustomDamage,
-       Callback = function(Value) Env.CustomDamage = Value end,
-    })
-    StudioTab:CreateButton({
-        Name = "⚡ Apply Stats & Abilities to Target Bug",
-        Callback = function()
-            pcall(function()
-                local list = SpiderDefs.List or SpiderDefs
-                if type(list) == "table" then
-                    for _, bug in pairs(list) do
-                        if type(bug) == "table" and (bug.Id == Env.SelectedBug or bug.Name == Env.SelectedBug) then
-                            bug.Ability = Env.TargetAbility
-                            bug.Skill = Env.TargetSkill
-                            if not bug.Stats then bug.Stats = {} end
-                            bug.Stats.Health = Env.CustomHealth
-                            bug.Stats.Damage = Env.CustomDamage
-                        end
-                    end
-                end
-            end)
-            Rayfield:Notify({Title = "Applied!", Content = "Modified " .. Env.SelectedBug, Duration = 3})
-        end,
-    })
-
-    RemoteTab:CreateSection("Progression & Spawn Remotes")
-    RemoteTab:CreateButton({ Name = "🚀 Fire Evolve", Callback = function() fireRemoteZeroCD("Evolve") end })
-    RemoteTab:CreateButton({ Name = "🥚 Fire SkipHatch", Callback = function() fireRemoteZeroCD("SkipHatch") end })
-    RemoteTab:CreateButton({ Name = "📍 Fire RequestSpawn", Callback = function() fireRemoteZeroCD("RequestSpawn") end })
-    RemoteTab:CreateButton({ Name = "🎁 Fire Rewards", Callback = function() fireRemoteZeroCD("Rewards") end })
-
-    RemoteTab:CreateSection("Shop & Economy Remotes")
-    RemoteTab:CreateButton({ Name = "🛒 Fire ShopAction", Callback = function() fireRemoteZeroCD("ShopAction") end })
-    RemoteTab:CreateButton({ Name = "💰 Fire Purchased", Callback = function() fireRemoteZeroCD("Purchased") end })
-    RemoteTab:CreateButton({ Name = "💎 Fire CoinGain", Callback = function() fireRemoteZeroCD("CoinGain") end })
-    RemoteTab:CreateButton({ Name = "✨ Fire XPBurst", Callback = function() fireRemoteZeroCD("XPBurst") end })
-
-    RemoteTab:CreateSection("Abilities, Traits & Quests")
-    RemoteTab:CreateButton({ Name = "⚡ Fire UseAbility", Callback = function() fireRemoteZeroCD("UseAbility", Env.TargetAbility) end })
-    RemoteTab:CreateButton({ Name = "🧬 Fire PickTrait", Callback = function() fireRemoteZeroCD("PickTrait") end })
-    RemoteTab:CreateButton({ Name = "📜 Fire QuestDone", Callback = function() fireRemoteZeroCD("QuestDone") end })
-    RemoteTab:CreateButton({ Name = "🎯 Fire QuestUpdate", Callback = function() fireRemoteZeroCD("QuestUpdate") end })
-    RemoteTab:CreateButton({ Name = "🌟 Fire OrbCollected", Callback = function() fireRemoteZeroCD("OrbCollected") end })
-
-    ConfigTab:CreateSection("Ultra Extreme Lock Save Controls")
-    ConfigTab:CreateToggle({
-       Name = "Enable Config Auto-Lock (Force)",
-       CurrentValue = Env.AutoLockConfig,
-       Callback = function(Value) Env.AutoLockConfig = Value end,
-    })
-
-    ConfigTab:CreateInput({
-        Name = "Ultra Lock Max Level Cap",
-        PlaceholderText = tostring(Env.CustomMaxLevel),
-        RemoveTextAfterFocusLost = false,
-        Callback = function(Text)
-            local num = tonumber(Text)
-            if num then
-                Env.CustomMaxLevel = num
-                if type(Config) == "table" then Config.MAX_LEVEL = num end
-                Rayfield:Notify({Title = "Ultra Save Locked", Content = "Max Level saved & locked to " .. num, Duration = 2})
-            end
-        end
-    })
-
-    ConfigTab:CreateInput({
-        Name = "Ultra Lock XP Multiplier",
-        PlaceholderText = tostring(Env.CustomXPMult),
-        RemoveTextAfterFocusLost = false,
-        Callback = function(Text)
-            local num = tonumber(Text)
-            if num then
-                Env.CustomXPMult = num
-                if type(Config) == "table" then Config.XP_GAIN_MULT = num end
-                Rayfield:Notify({Title = "Ultra Save Locked", Content = "XP Gain saved & locked to " .. num, Duration = 2})
-            end
-        end
-    })
-
-    ConfigTab:CreateInput({
-        Name = "Ultra Lock Coin Multiplier",
-        PlaceholderText = tostring(Env.CustomCoinMult),
-        RemoveTextAfterFocusLost = false,
-        Callback = function(Text)
-            local num = tonumber(Text)
-            if num then
-                Env.CustomCoinMult = num
-                if type(Config) == "table" then Config.COIN_GAIN_MULT = num end
-                Rayfield:Notify({Title = "Ultra Save Locked", Content = "Coin Gain saved & locked to " .. num, Duration = 2})
-            end
-        end
-    })
-
-    Rayfield:Notify({
-        Title = "Ultimate Master Suite Loaded!",
-        Content = "Ultra Extreme Lock Save active. Config locked & ready.",
-        Duration = 5,
-        Image = 4483362458
-    })
-else
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Master Suite Active",
-        Text = "Ultra Extreme Lock Save active (UI network load failed, background features running).",
-        Duration = 5
-    })
-end
