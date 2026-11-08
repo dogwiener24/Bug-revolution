@@ -1,9 +1,8 @@
 --[[
-    Bug Evolution | Ultimate Master Suite (Ultra Extreme Lock Save Edition)
-    - Fully preserved Config, SpiderDefs, TraitDefs, Stages, and Signal modules
-    - Safe UI Loader with Native Notification Fallback (Never crashes on line 1)
-    - Ultra Extreme Lock Save Engine: Real-time input persistence & force-locking
-    - Dynamic Remote & Module Discovery with Zero Cooldowns
+    Bug Evolution | Ultimate Master Suite (Pure Config Injection & Remotes)
+    - Zero memory hooks (Completely immune to Delta nil crashes)
+    - Full Config Injection & Ultra Extreme Lock Save Engine (Max Level 900, 50x XP, 10.9x Coins)
+    - All game remotes mapped with zero cooldowns
 ]]
 
 local success, Rayfield = pcall(function()
@@ -25,7 +24,6 @@ local LocalPlayer = Players.LocalPlayer
 local SharedFolder = ReplicatedStorage:WaitForChild("Shared", 10)
 local RemotesFolder = ReplicatedStorage:WaitForChild("Remotes", 10)
 
--- Safely require official game modules from ReplicatedStorage.Shared paths
 local function requireModule(name)
     if SharedFolder then
         local mod = SharedFolder:FindFirstChild(name)
@@ -43,7 +41,6 @@ local TraitDefs = requireModule("TraitDefs")
 local Stages = requireModule("Stages")
 local Signal = requireModule("Signal")
 
--- Extract available bug names and pools dynamically
 local bugIds = {}
 if type(SpiderDefs) == "table" then
     if SpiderDefs.List then
@@ -70,7 +67,6 @@ local skillPool = {
     "NecroticBite", "Burrow", "Shockwave", "Phase", "FangFury", "WebTrap", "PrimalRoar"
 }
 
--- Runtime State Variables with getgenv() persistence & Ultra Extreme Save values
 getgenv().BugRevEnv = getgenv().BugRevEnv or {
     WalkSpeed = 16,
     SpeedToggle = false,
@@ -91,7 +87,6 @@ getgenv().BugRevEnv = getgenv().BugRevEnv or {
 }
 local Env = getgenv().BugRevEnv
 
--- Dynamic Remote Discovery & Mapping
 local Remotes = {}
 local remoteNamesList = {}
 local parentSearch = RemotesFolder or ReplicatedStorage
@@ -111,7 +106,6 @@ local function fireRemoteZeroCD(remoteName, ...)
     end
 end
 
--- Config Ultra Extreme Lock Save Engine & Character Loops
 RunService.Heartbeat:Connect(function()
     if Env.AutoLockConfig and type(Config) == "table" then
         Config.MAX_LEVEL = Env.CustomMaxLevel
@@ -221,7 +215,6 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 10x Attack Loop
 task.spawn(function()
     while true do
         task.wait(0.05)
@@ -244,7 +237,6 @@ task.spawn(function()
     end
 end)
 
--- Auto Tool Loop
 task.spawn(function()
     while true do
         if Env.AutoTool then
@@ -266,7 +258,6 @@ task.spawn(function()
     end
 end)
 
--- Build UI if Rayfield loaded successfully
 if Rayfield then
     local Window = Rayfield:CreateWindow({
        Name = "🐛 Bug Evolution | Ultimate Master Suite",
@@ -469,11 +460,5 @@ if Rayfield then
         Content = "Ultra Extreme Lock Save active. Config locked & ready.",
         Duration = 5,
         Image = 4483362458
-    })
-else
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Master Suite Active",
-        Text = "Ultra Extreme Lock Save active (UI skipped).",
-        Duration = 5
     })
 end
